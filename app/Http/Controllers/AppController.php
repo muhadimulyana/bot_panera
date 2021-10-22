@@ -148,7 +148,7 @@ class AppController extends Controller
                                         "AKTIF" => 0,
                                     ]);
 
-                                    $bots = DB::table("bot")->get();
+                                    $bots = DB::table("bot")->whereRaw("KODE <> ?", ["general"])->get();
 
                                     $keyboard = [ 'inline_keyboard' => []];
 
@@ -383,6 +383,69 @@ class AppController extends Controller
         
 
     }
+    
+    public function ppbj()
+    {
+        $update = json_decode(file_get_contents("php://input"), TRUE);
+        
+        $chatId = $update["message"]["chat"]["id"];
+
+        try {
+
+            $checkId = DB::table("daftar_id_telegram")->whereRaw("ID_CHAT = ? AND AKTIF = 1", [$chatId])->first();
+            
+            if($checkId) {
+
+                $this->ppbjSendMessage([
+                    "chat_id" => $chatId,
+                    "parse_mode" => "HTML"
+                ],  "Akun anda sudah terdaftar, anda akan menerima notifikasi approval PPBJ, apabila ada permintaan", );
+
+            } else {
+
+                $bots = DB::table("bot")->whereRaw("KODE = ?", ["general"])->get();
+
+                $keyboard = [ 'inline_keyboard' => []];
+
+                foreach($bots as $bot) {
+                    array_push($keyboard["inline_keyboard"], 
+                        [
+                            [
+                                "text" => $bot->NAMA,
+                                "url" => $bot->URL
+                            ]
+                        ]
+                    );
+                }
+
+                $this->ppbjSendMessage([
+                    "chat_id" => $chatId,
+                    "parse_mode" => "HTML"
+                ],  "Akun anda belum terdaftar, silahkan daftar terlebih dahulu di bot dibawah ini. Anda akan otomatis menerima notifikasi apabila sudah mendaftar.", $keyboard);
+
+            }
+
+        } catch (QueryException $e) {
+
+            $this->ppbjSendMessage([
+                "chat_id" => $chatId,
+                "parse_mode" => "HTML"
+            ],  "Terjadi Kesalahan [" . $e->getCode() . "]");
+
+        }
+
+    }
+
+    public function ppbjSendMessage($content, $text, $keyboard = [])
+    {
+        $path = "https://api.telegram.org/bot2041978972:AAHUNfNsjaiv1JGHUfqmTfWk0nkXfpnOLJ4";
+        if($keyboard) {
+            $keyboard = json_encode($keyboard);
+            file_get_contents($path.'/sendmessage?text=' . $text . '&reply_markup=' . $keyboard . '&' . http_build_query($content));
+        } else {
+            file_get_contents($path.'/sendmessage?text=' . $text . '&' . http_build_query($content));
+        }
+    }
 
     public function sendPhoto($chatId)
     {
@@ -426,7 +489,7 @@ class AppController extends Controller
             ]
         ];
 
-        $this->sendMessage([
+        $this->ppbjSendMessage([
             "chat_id" => $chatId,
             "parse_mode" => "HTML"
         ], "Hellow", $keyboard);

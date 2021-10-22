@@ -16,4 +16,5 @@ $router->get('/', function () use ($router) {
 });
 $router->post('/test', 'AppController@test');
 $router->post('/app', 'AppController@app');
+$router->post('/ppbj', 'AppController@ppbj');
 
