@@ -156,26 +156,11 @@ class AppController extends Controller
                                         DB::table("sesi_detail")->where('ID_LAYANAN', $sesi->ID_LAYANAN)->update([
                                             "AKTIF" => 0,
                                         ]);
-    
-                                        $bots = DB::table("bot")->whereRaw("KODE <> ?", ["general"])->get();
-    
-                                        $keyboard = [ 'inline_keyboard' => []];
-    
-                                        foreach($bots as $bot) {
-                                            array_push($keyboard["inline_keyboard"], 
-                                                [
-                                                    [
-                                                        "text" => $bot->NAMA,
-                                                        "url" => $bot->URL
-                                                    ]
-                                                ]
-                                            );
-                                        }
                                     
                                         $this->sendMessage([
                                             "chat_id" => $chatId,
                                             "parse_mode" => "HTML"
-                                        ],  "Akun anda berhasil didaftarkan, selanjutnya silahkan pilih bot Scope dibawah ini, jika sudah masuk pada bot pilih Start/Mulai.", $keyboard);
+                                        ],  "Akun anda berhasil didaftarkan");
             
                                         sleep(2);
             
