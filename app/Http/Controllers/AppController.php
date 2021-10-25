@@ -17,106 +17,40 @@ class AppController extends Controller
 
         try {
 
-            $layanan = DB::table("layanan")->whereRaw("ID_CHAT = ? AND AKTIF = 1", [$chatId])->first();
+            $sesi = DB::table("sesi")->whereRaw("ID_CHAT = ? AND AKTIF = 1", [$chatId])->first();
 
-            if($layanan) {
-                //Layanan sedang aktif
-                DB::table("layanan")->where('ID_CHAT', $chatId)->update([
-                    "ID_CHAT" => $chatId,
-                    "UPDATED_AT" => date("Y-m-d H:i:s")
-                ]);
-    
-                if($layanan->USERNAME === NULL) {
-    
-                    $message = explode(" ", $message);
-                    if(count($message) === 2) {
-    
-                        $user = DB::table("hrd.viewkaryawanprofile as a")->join("user_management.user_right as b", "a.Nik", "=", "b.nik")->whereRaw("b.User_Name = ? AND b.Pass = ? AND a.Aktif = 1", [$message[0], $message[1]])->first();
-    
-                        if($user) {
-    
-                            DB::table("layanan")->where('ID_CHAT', $chatId)->update([
-                                "ID_CHAT" => $chatId,
-                                "USERNAME" => $message[0],
-                                "PIN" => $user->pin,
-                                "UPDATED_AT" => date("Y-m-d H:i:s")
-                            ]);
-    
-                            $text = "Halo <strong>$user->Nama</strong> 😃 Berikut ini daftar menu yang dapat digunakan: \n\n /daftar - Perintah ini digunakan untuk mendaftarkan username anda, sehingga ID telegram anda memungkinkan untuk menerima notifikasi dari program Scope PAN ERA GROUP \n\n /selesai - Perintah ini digunakan untuk mengakhiri sesi layanan";
-    
-                            $keyboard = [
-                                ['/daftar','/selesai'],
-                            ];
-                
-                            $markupKeyboard = [
-                                "keyboard" => $keyboard,
-                                'resize_keyboard' => true, 
-                                'one_time_keyboard' => true
-                            ];
-    
-                            $this->sendMessage([
-                                "chat_id" => $chatId,
-                                "parse_mode" => "HTML"
-                            ], urlencode($text), $markupKeyboard);
-    
-                        } else {
-    
-                            $this->sendMessage([
-                                "chat_id" => $chatId,
-                                "parse_mode" => "HTML"
-                            ], "Username atau password salah, coba lagi");
-    
-                        }
-    
-                    } else {
-    
-                        $this->sendMessage([
-                            "chat_id" => $chatId,
-                            "parse_mode" => "HTML"
-                        ], "Format masukkan salah, pastikan format yang anda masukkan sudah benar");
-                        sleep(1);
-                        $this->sendMessage([
-                            "chat_id" => $chatId,
-                            "parse_mode" => "HTML"
-                        ], "<i>cth: mamulyana Loco88-55</i>");
-    
-                    }
-                    
-                } else {
-    
-                    $command = [
-                        "/daftar",
-                        "/selesai",
-                        "/batal"
-                    ];
-    
-                    $layananAktif = DB::table("layanan as a")->join("layanan_detail as b", "a.ID_LAYANAN", "=", "b.ID_LAYANAN")->whereRaw("a.ID_CHAT = ? AND a.AKTIF = 1 AND b.AKTIF = 1", [$chatId])->first();
-    
-                    if($layananAktif) {
-    
-                        if($layananAktif->COMMAND == "/daftar") {
-                            
-                            if($message == "/selesai") {
-    
-                                DB::table("layanan")->where('ID_CHAT', $chatId)->update([
+            if($sesi) {
+
+                $time = date("Y-m-d H:i:s");
+                $exp_sesi = date("Y-m-d H:i:s", strtotime("-10 minutes", strtotime($time)));
+
+                if($sesi->UPDATED_AT >= $exp_sesi) {
+                    //Layanan sedang aktif
+                    DB::table("sesi")->whereRaw('ID_CHAT = ? AND AKTIF = 1', [$chatId])->update([
+                        "ID_CHAT" => $chatId,
+                        "UPDATED_AT" => date("Y-m-d H:i:s")
+                    ]);
+        
+                    if($sesi->USERNAME === NULL) {
+        
+                        $message = explode(" ", $message);
+                        if(count($message) === 2) {
+        
+                            $user = DB::table("hrd.viewkaryawanprofile as a")->join("user_management.user_right as b", "a.Nik", "=", "b.nik")->whereRaw("b.User_Name = ? AND b.Pass = ? AND a.Aktif = 1", [$message[0], $message[1]])->first();
+        
+                            if($user) {
+        
+                                DB::table("sesi")->whereRaw('ID_CHAT = ? AND AKTIF = 1', [$chatId])->update([
                                     "ID_CHAT" => $chatId,
-                                    "AKTIF" => 0,
+                                    "USERNAME" => $message[0],
+                                    "NIK" => $user->Nik,
+                                    "NAMA" => $user->Nama,
+                                    "PIN" => $user->pin,
                                     "UPDATED_AT" => date("Y-m-d H:i:s")
                                 ]);
-    
-                                $this->sendMessage([
-                                    "chat_id" => $chatId,
-                                    "parse_mode" => "HTML"
-                                ], "Terimakasih telah menggunakan layanan ini 😊");
         
-                            } elseif($message == "/batal") {
-                                
-                                DB::table("layanan_detail")->where('ID_LAYANAN', $layanan->ID_LAYANAN)->update([
-                                    "AKTIF" => 0,
-                                ]);
+                                $text = "Halo <strong>$user->Nama</strong> 😃 Berikut ini daftar menu yang dapat digunakan: \n\n /daftar - Perintah ini digunakan untuk mendaftarkan username anda, sehingga ID telegram anda memungkinkan untuk menerima notifikasi dari program Scope PAN ERA GROUP \n\n /selesai - Perintah ini digunakan untuk mengakhiri sesi layanan";
         
-                                $text = "Daftar menu: \n\n /daftar - Perintah ini digunakan untuk mendaftarkan username anda, sehingga ID telegram anda memungkinkan untuk menerima notifikasi dari program Scope PAN ERA GROUP \n\n /selesai - Perintah ini digunakan untuk mengakhiri sesi layanan";
-    
                                 $keyboard = [
                                     ['/daftar','/selesai'],
                                 ];
@@ -126,134 +60,235 @@ class AppController extends Controller
                                     'resize_keyboard' => true, 
                                     'one_time_keyboard' => true
                                 ];
-    
+        
                                 $this->sendMessage([
                                     "chat_id" => $chatId,
                                     "parse_mode" => "HTML"
                                 ], urlencode($text), $markupKeyboard);
-                                
+        
                             } else {
-    
-                                if($message == $layanan->PIN) {
-    
-                                    DB::table("daftar_id_telegram")->insert([
+        
+                                $this->sendMessage([
+                                    "chat_id" => $chatId,
+                                    "parse_mode" => "HTML"
+                                ], "Username atau password salah, coba lagi");
+        
+                            }
+        
+                        } else {
+        
+                            $this->sendMessage([
+                                "chat_id" => $chatId,
+                                "parse_mode" => "HTML"
+                            ], "Format masukkan salah, pastikan format yang anda masukkan sudah benar");
+                            sleep(1);
+                            $this->sendMessage([
+                                "chat_id" => $chatId,
+                                "parse_mode" => "HTML"
+                            ], "<i>cth: mamulyana Loco88-55</i>");
+        
+                        }
+                        
+                    } else {
+        
+                        $command = [
+                            "/daftar",
+                            "/selesai",
+                            "/batal"
+                        ];
+        
+                        $sesiAktif = DB::table("sesi as a")->join("sesi_detail as b", "a.ID_LAYANAN", "=", "b.ID_LAYANAN")->whereRaw("a.ID_CHAT = ? AND a.AKTIF = 1 AND b.AKTIF = 1", [$chatId])->first();
+        
+                        if($sesiAktif) {
+        
+                            if($sesiAktif->COMMAND == "/daftar") {
+                                
+                                if($message == "/selesai") {
+        
+                                    DB::table("sesi")->whereRaw('ID_CHAT = ? AND AKTIF = 1', [$chatId])->update([
                                         "ID_CHAT" => $chatId,
-                                        "USERNAME" => $layanan->USERNAME,
-                                        "PROFILE_NAME" => $chatName,
-                                        "AKTIF" => 1,
-                                        "CREATED_AT" => date("Y-m-d H:i:s")
+                                        "AKTIF" => 0,
+                                        "UPDATED_AT" => date("Y-m-d H:i:s")
                                     ]);
         
-                                    DB::table("layanan_detail")->where('ID_LAYANAN', $layanan->ID_LAYANAN)->update([
+                                    $this->sendMessage([
+                                        "chat_id" => $chatId,
+                                        "parse_mode" => "HTML"
+                                    ], "Terimakasih telah menggunakan layanan ini 😊");
+            
+                                } elseif($message == "/batal") {
+                                    
+                                    DB::table("sesi_detail")->where('ID_LAYANAN', $sesi->ID_LAYANAN)->update([
                                         "AKTIF" => 0,
                                     ]);
-
-                                    $bots = DB::table("bot")->whereRaw("KODE <> ?", ["general"])->get();
-
-                                    $keyboard = [ 'inline_keyboard' => []];
-
-                                    foreach($bots as $bot) {
-                                        array_push($keyboard["inline_keyboard"], 
-                                            [
+            
+                                    $text = "Daftar menu: \n\n /daftar - Perintah ini digunakan untuk mendaftarkan username anda, sehingga ID telegram anda memungkinkan untuk menerima notifikasi dari program Scope PAN ERA GROUP \n\n /selesai - Perintah ini digunakan untuk mengakhiri sesi layanan";
+        
+                                    $keyboard = [
+                                        ['/daftar','/selesai'],
+                                    ];
+                        
+                                    $markupKeyboard = [
+                                        "keyboard" => $keyboard,
+                                        'resize_keyboard' => true, 
+                                        'one_time_keyboard' => true
+                                    ];
+        
+                                    $this->sendMessage([
+                                        "chat_id" => $chatId,
+                                        "parse_mode" => "HTML"
+                                    ], urlencode($text), $markupKeyboard);
+                                    
+                                } else {
+        
+                                    if($message == $sesi->PIN) {
+        
+                                        DB::table("daftar_id_telegram")->insert([
+                                            "ID_CHAT" => $chatId,
+                                            "USERNAME" => $sesi->USERNAME,
+                                            "NIK" => $sesi->NIK,
+                                            "NAMA" => $sesi->NAMA,
+                                            "PROFILE_NAME" => $chatName,
+                                            "AKTIF" => 1,
+                                            "CREATED_AT" => date("Y-m-d H:i:s")
+                                        ]);
+            
+                                        DB::table("sesi_detail")->where('ID_LAYANAN', $sesi->ID_LAYANAN)->update([
+                                            "AKTIF" => 0,
+                                        ]);
+    
+                                        $bots = DB::table("bot")->whereRaw("KODE <> ?", ["general"])->get();
+    
+                                        $keyboard = [ 'inline_keyboard' => []];
+    
+                                        foreach($bots as $bot) {
+                                            array_push($keyboard["inline_keyboard"], 
                                                 [
-                                                    "text" => $bot->NAMA,
-                                                    "url" => $bot->URL
+                                                    [
+                                                        "text" => $bot->NAMA,
+                                                        "url" => $bot->URL
+                                                    ]
                                                 ]
-                                            ]
-                                        );
-                                    }
-                                
-                                    $this->sendMessage([
-                                        "chat_id" => $chatId,
-                                        "parse_mode" => "HTML"
-                                    ],  "Akun anda berhasil didaftarkan, selanjutnya silahkan pilih bot Scope dibawah ini, jika sudah masuk pada bot pilih Start/Mulai.", $keyboard);
-        
-                                    sleep(2);
-        
-                                    $text = "Daftar menu: \n\n /daftar - Perintah ini digunakan untuk mendaftarkan username anda, sehingga ID telegram anda memungkinkan untuk menerima notifikasi dari program Scope PAN ERA GROUP \n\n /selesai - Perintah ini digunakan untuk mengakhiri sesi layanan";
-    
-                                    $keyboard = [
-                                        ['/daftar','/selesai'],
-                                    ];
-                        
-                                    $markupKeyboard = [
-                                        "keyboard" => $keyboard,
-                                        'resize_keyboard' => true, 
-                                        'one_time_keyboard' => true
-                                    ];
-    
-                                    $this->sendMessage([
-                                        "chat_id" => $chatId,
-                                        "parse_mode" => "HTML"
-                                    ],  urlencode($text), $markupKeyboard);
-        
-                                } else {
-    
-                                    $keyboard = [
-                                        ['/batal'],
-                                    ];
-                        
-                                    $markupKeyboard = [
-                                        "keyboard" => $keyboard,
-                                        'resize_keyboard' => true, 
-                                        'one_time_keyboard' => true
-                                    ];
+                                            );
+                                        }
                                     
-                                    $this->sendMessage([
-                                        "chat_id" => $chatId,
-                                        "parse_mode" => "HTML"
-                                    ], "PIN yang anda masukkan salah, coba lagi. Masukkan perintah /batal untuk membatalkan perintah", $markupKeyboard);
-                                    
+                                        $this->sendMessage([
+                                            "chat_id" => $chatId,
+                                            "parse_mode" => "HTML"
+                                        ],  "Akun anda berhasil didaftarkan, selanjutnya silahkan pilih bot Scope dibawah ini, jika sudah masuk pada bot pilih Start/Mulai.", $keyboard);
+            
+                                        sleep(2);
+            
+                                        $text = "Daftar menu: \n\n /daftar - Perintah ini digunakan untuk mendaftarkan username anda, sehingga ID telegram anda memungkinkan untuk menerima notifikasi dari program Scope PAN ERA GROUP \n\n /selesai - Perintah ini digunakan untuk mengakhiri sesi layanan";
         
-                                }
-    
-                            }
-    
-                        }
-    
-    
-                    } else {
-    
-                        if(in_array($message, $command)) {
+                                        $keyboard = [
+                                            ['/daftar','/selesai'],
+                                        ];
                             
-                            if($message == "/daftar") {
-    
-                                $list_id = DB::table("daftar_id_telegram")->whereRaw("ID_CHAT = ? AND AKTIF = 1", [$chatId])->first();
-    
-                                if(!$list_id) {
-    
-                                    DB::table("layanan_detail")->insert([
-                                        "ID_LAYANAN" => $layanan->ID_LAYANAN,
-                                        "COMMAND" => $message,
-                                        "AKTIF" => 1
+                                        $markupKeyboard = [
+                                            "keyboard" => $keyboard,
+                                            'resize_keyboard' => true, 
+                                            'one_time_keyboard' => true
+                                        ];
+        
+                                        $this->sendMessage([
+                                            "chat_id" => $chatId,
+                                            "parse_mode" => "HTML"
+                                        ],  urlencode($text), $markupKeyboard);
+            
+                                    } else {
+        
+                                        $keyboard = [
+                                            ['/batal'],
+                                        ];
+                            
+                                        $markupKeyboard = [
+                                            "keyboard" => $keyboard,
+                                            'resize_keyboard' => true, 
+                                            'one_time_keyboard' => true
+                                        ];
+                                        
+                                        $this->sendMessage([
+                                            "chat_id" => $chatId,
+                                            "parse_mode" => "HTML"
+                                        ], "PIN yang anda masukkan salah, coba lagi. Masukkan perintah /batal untuk membatalkan perintah", $markupKeyboard);
+                                        
+            
+                                    }
+        
+                                }
+        
+                            }
+        
+        
+                        } else {
+        
+                            if(in_array($message, $command)) {
+                                
+                                if($message == "/daftar") {
+        
+                                    $list_id = DB::table("daftar_id_telegram")->whereRaw("ID_CHAT = ? AND AKTIF = 1", [$chatId])->first();
+        
+                                    if(!$list_id) {
+        
+                                        DB::table("sesi_detail")->insert([
+                                            "ID_LAYANAN" => $sesi->ID_LAYANAN,
+                                            "COMMAND" => $message,
+                                            "AKTIF" => 1
+                                        ]);
+        
+                                        $keyboard = [
+                                            ['/batal'],
+                                        ];
+                            
+                                        $markupKeyboard = [
+                                            "keyboard" => $keyboard,
+                                            'resize_keyboard' => true, 
+                                            'one_time_keyboard' => true
+                                        ];
+        
+                                        $this->sendMessage([
+                                            "chat_id" => $chatId,
+                                            "parse_mode" => "HTML"
+                                        ], "Masukkan PIN anda untuk mengkonfirmasi pendaftaran akun. Pilih /batal untuk membatalkan perintah", $markupKeyboard);
+        
+                                    } else {
+        
+                                        $this->sendMessage([
+                                            "chat_id" => $chatId,
+                                            "parse_mode" => "HTML"
+                                        ], "Tidak dapat mendaftarkan akun. Saat ini akun telegram anda sudah didaftarkan dengan username: <strong>" . $list_id->USERNAME . "</strong>, jika username anda tidak sesuai, segera hubungi divisi INS");
+        
+                                        sleep(1);
+        
+                                        $text = "Daftar menu: \n\n /daftar - Perintah ini digunakan untuk mendaftarkan username anda, sehingga ID telegram anda memungkinkan untuk menerima notifikasi dari program Scope PAN ERA GROUP \n\n /selesai - Perintah ini digunakan untuk mengakhiri sesi layanan";
+        
+                                        $keyboard = [
+                                            ['/daftar','/selesai'],
+                                        ];
+                            
+                                        $markupKeyboard = [
+                                            "keyboard" => $keyboard,
+                                            'resize_keyboard' => true, 
+                                            'one_time_keyboard' => true
+                                        ];
+        
+                                        $this->sendMessage([
+                                            "chat_id" => $chatId,
+                                            "parse_mode" => "HTML"
+                                        ],  urlencode($text), $markupKeyboard);
+        
+                                    }
+                                    
+        
+                                } elseif($message == "/batal") {
+        
+                                    DB::table("sesi_detail")->where('ID_LAYANAN', $sesi->ID_LAYANAN)->update([
+                                        "AKTIF" => 0,
                                     ]);
-    
-                                    $keyboard = [
-                                        ['/batal'],
-                                    ];
-                        
-                                    $markupKeyboard = [
-                                        "keyboard" => $keyboard,
-                                        'resize_keyboard' => true, 
-                                        'one_time_keyboard' => true
-                                    ];
-    
-                                    $this->sendMessage([
-                                        "chat_id" => $chatId,
-                                        "parse_mode" => "HTML"
-                                    ], "Masukkan PIN anda untuk mengkonfirmasi pendaftaran akun. Pilih /batal untuk membatalkan perintah", $markupKeyboard);
-    
-                                } else {
-    
-                                    $this->sendMessage([
-                                        "chat_id" => $chatId,
-                                        "parse_mode" => "HTML"
-                                    ], "Tidak dapat mendaftarkan akun. Saat ini akun telegram anda sudah didaftarkan dengan username: <strong>" . $list_id->USERNAME . "</strong>, jika username anda tidak sesuai, segera hubungi divisi INS");
-    
-                                    sleep(1);
-    
+        
                                     $text = "Daftar menu: \n\n /daftar - Perintah ini digunakan untuk mendaftarkan username anda, sehingga ID telegram anda memungkinkan untuk menerima notifikasi dari program Scope PAN ERA GROUP \n\n /selesai - Perintah ini digunakan untuk mengakhiri sesi layanan";
-    
+        
                                     $keyboard = [
                                         ['/daftar','/selesai'],
                                     ];
@@ -263,23 +298,36 @@ class AppController extends Controller
                                         'resize_keyboard' => true, 
                                         'one_time_keyboard' => true
                                     ];
-    
+        
                                     $this->sendMessage([
                                         "chat_id" => $chatId,
                                         "parse_mode" => "HTML"
-                                    ],  urlencode($text), $markupKeyboard);
-    
+                                    ], urlencode($text), $markupKeyboard);
+        
+                                } elseif($message == "/selesai") {
+        
+                                    DB::table("sesi")->whereRaw('ID_CHAT = ? AND AKTIF = 1', [$chatId])->update([
+                                        "ID_CHAT" => $chatId,
+                                        "AKTIF" => 0,
+                                        "UPDATED_AT" => date("Y-m-d H:i:s")
+                                    ]);
+        
+                                    $this->sendMessage([
+                                        "chat_id" => $chatId,
+                                        "parse_mode" => "HTML"
+                                    ], "Terimakasih telah menggunakan layanan ini 😊");
+        
                                 }
-                                
-    
-                            } elseif($message == "/batal") {
-    
-                                DB::table("layanan_detail")->where('ID_LAYANAN', $layanan->ID_LAYANAN)->update([
-                                    "AKTIF" => 0,
-                                ]);
-    
+        
+                            } else {
+        
+                                $this->sendMessage([
+                                    "chat_id" => $chatId,
+                                    "parse_mode" => "HTML"
+                                ], "Maaf, perintah anda tidak dikenali");
+                                sleep(1);
                                 $text = "Daftar menu: \n\n /daftar - Perintah ini digunakan untuk mendaftarkan username anda, sehingga ID telegram anda memungkinkan untuk menerima notifikasi dari program Scope PAN ERA GROUP \n\n /selesai - Perintah ini digunakan untuk mengakhiri sesi layanan";
-    
+        
                                 $keyboard = [
                                     ['/daftar','/selesai'],
                                 ];
@@ -289,57 +337,40 @@ class AppController extends Controller
                                     'resize_keyboard' => true, 
                                     'one_time_keyboard' => true
                                 ];
-    
+        
                                 $this->sendMessage([
                                     "chat_id" => $chatId,
                                     "parse_mode" => "HTML"
                                 ], urlencode($text), $markupKeyboard);
-    
-                            } elseif($message == "/selesai") {
-    
-                                DB::table("layanan")->where('ID_CHAT', $chatId)->update([
-                                    "ID_CHAT" => $chatId,
-                                    "AKTIF" => 0,
-                                    "UPDATED_AT" => date("Y-m-d H:i:s")
-                                ]);
-    
-                                $this->sendMessage([
-                                    "chat_id" => $chatId,
-                                    "parse_mode" => "HTML"
-                                ], "Terimakasih telah menggunakan layanan ini 😊");
-    
+        
                             }
-    
-                        } else {
-    
-                            $this->sendMessage([
-                                "chat_id" => $chatId,
-                                "parse_mode" => "HTML"
-                            ], "Maaf, perintah anda tidak dikenali");
-                            sleep(1);
-                            $text = "Daftar menu: \n\n /daftar - Perintah ini digunakan untuk mendaftarkan username anda, sehingga ID telegram anda memungkinkan untuk menerima notifikasi dari program Scope PAN ERA GROUP \n\n /selesai - Perintah ini digunakan untuk mengakhiri sesi layanan";
-    
-                            $keyboard = [
-                                ['/daftar','/selesai'],
-                            ];
-                
-                            $markupKeyboard = [
-                                "keyboard" => $keyboard,
-                                'resize_keyboard' => true, 
-                                'one_time_keyboard' => true
-                            ];
-    
-                            $this->sendMessage([
-                                "chat_id" => $chatId,
-                                "parse_mode" => "HTML"
-                            ], urlencode($text), $markupKeyboard);
-    
+        
+        
                         }
-    
-    
+                        
+        
                     }
-                    
-    
+                } else {
+
+                    DB::table("sesi")->whereRaw("ID_CHAT = ? AND AKTIF = 1", [$chatId])->update([
+                        "AKTIF" => 0
+                    ]);
+
+                    $keyboard = [
+                        ['/restart'],
+                    ];
+        
+                    $markupKeyboard = [
+                        "keyboard" => $keyboard,
+                        'resize_keyboard' => true, 
+                        'one_time_keyboard' => true
+                    ];
+
+
+                    $this->sendMessage([
+                        "chat_id" => $chatId,
+                        "parse_mode" => "HTML"
+                    ],  "Sesi anda telah berakhir, silahkan pilih tombol /restart untuk memulai kembali sesi", $markupKeyboard);
                 }
     
             } else {
@@ -351,7 +382,7 @@ class AppController extends Controller
                     "parse_mode" => "HTML"
                 ], $text);
     
-                DB::table("layanan")->insert([
+                DB::table("sesi")->insert([
                     "ID_CHAT" => $chatId,
                     "PROFILE_NAME" => $chatName,
                     "CREATED_AT" => date("Y-m-d H:i:s"),
@@ -365,7 +396,7 @@ class AppController extends Controller
             $this->sendMessage([
                 "chat_id" => $chatId,
                 "parse_mode" => "HTML"
-            ],  "Terjadi Kesalahan [" . $e->getCode() . "]");
+            ],  "Terjadi Kesalahan [" . $e->getCode() . "]: " . $e->getMessage());
 
         }
 
